@@ -1,3 +1,9 @@
+console.info(
+    '%c TRELLO-LIST-VIEWER-CARD %c v1.0.0 ',
+    'color: white; background-color: #0079bf; font-weight: bold;',
+    'color: #0079bf; background-color: white; font-weight: bold;'
+);
+
 class TrelloListViewerCard extends HTMLElement
 {
     set hass(hass)
@@ -447,9 +453,192 @@ class TrelloListViewerCard extends HTMLElement
     getCardSize() {
         return 1;
     }
+
+    static getConfigElement() {
+        return document.createElement('trello-list-viewer-card-editor');
+    }
+
+    static getStubConfig() {
+        return {
+            global_credentials_api_key: '',
+            global_credentials_api_token: '',
+            global_credentials_board_name: '',
+            global_credentials_list_name: '',
+        };
+    }
 }
 
 customElements.define('trello-list-viewer-card', TrelloListViewerCard);
+
+window.customCards = window.customCards || [];
+window.customCards.push({
+    type: 'trello-list-viewer-card',
+    name: 'Trello List Viewer Card',
+    description: 'Display cards from a Trello list in Home Assistant',
+    preview: false,
+    documentationURL: 'https://github.com/buzzsurfr/HomeAssistant-TrelloListViewerCard',
+});
+
+// ##################################################
+// ### Visual Card Editor
+// ##################################################
+
+class TrelloListViewerCardEditor extends HTMLElement {
+    constructor() {
+        super();
+        this._config = {};
+        this._hass = null;
+        this._panels = [];
+    }
+
+    set hass(hass) {
+        this._hass = hass;
+        for (const form of this.querySelectorAll('ha-form')) {
+            form.hass = hass;
+        }
+    }
+
+    setConfig(config) {
+        this._config = { ...config };
+        this._syncForms();
+    }
+
+    connectedCallback() {
+        if (!this.firstChild) {
+            this._render();
+        }
+    }
+
+    _sections() {
+        return [
+            {
+                title: 'Credentials',
+                expanded: true,
+                schema: [
+                    { name: 'global_credentials_api_key',    label: 'API Key',    selector: { text: {} }, required: true },
+                    { name: 'global_credentials_api_token',  label: 'API Token',  selector: { text: {} }, required: true },
+                    { name: 'global_credentials_board_name', label: 'Board Name', selector: { text: {} }, required: true },
+                    { name: 'global_credentials_list_name',  label: 'List Name',  selector: { text: {} }, required: true },
+                ],
+            },
+            {
+                title: 'Global Settings',
+                expanded: false,
+                schema: [
+                    { name: 'global_important_label_name',  label: 'Important Label Name',      selector: { text: {} } },
+                    { name: 'global_show_header',           label: 'Show Header',               selector: { boolean: {} } },
+                    { name: 'global_show_header_sub_total', label: 'Show Header Sub Total',     selector: { boolean: {} } },
+                    { name: 'global_update_interval_s',     label: 'Update Interval (seconds)', selector: { number: { min: 10, mode: 'box' } } },
+                    { name: 'global_disable_auto_refresh',  label: 'Disable Auto Refresh',      selector: { boolean: {} } },
+                    { name: 'global_reduce_requests',       label: 'Reduce Requests',           selector: { boolean: {} } },
+                    { name: 'global_debug',                 label: 'Debug Mode',                selector: { boolean: {} } },
+                ],
+            },
+            {
+                title: 'Cards',
+                expanded: false,
+                schema: [
+                    { name: 'cards_limit_count',        label: 'Card Limit',        selector: { number: { min: 1, max: 500, mode: 'box' } } },
+                    { name: 'cards_show_labels',        label: 'Show Labels',       selector: { boolean: {} } },
+                    { name: 'cards_show_label_text',    label: 'Show Label Text',   selector: { boolean: {} } },
+                    { name: 'cards_show_due',           label: 'Show Due Date',     selector: { boolean: {} } },
+                    { name: 'cards_show_desc',          label: 'Show Description',  selector: { boolean: {} } },
+                    { name: 'cards_show_is_important',  label: 'Show Importance',   selector: { boolean: {} } },
+                    { name: 'cards_sort_by_name',       label: 'Sort by Name',      selector: { boolean: {} } },
+                    { name: 'cards_click_behavior',     label: 'Click Behavior',    selector: { select: { options: ['none', 'open', 'move', 'close', 'delete'] } } },
+                    { name: 'cards_click_confirm',      label: 'Confirm on Click',  selector: { boolean: {} } },
+                    { name: 'cards_click_move_to_list', label: 'Move to List Name', selector: { text: {} } },
+                ],
+            },
+            {
+                title: 'Done',
+                expanded: false,
+                schema: [
+                    { name: 'done_show',                 label: 'Show Done Count',        selector: { boolean: {} } },
+                    { name: 'done_list_name',            label: 'Done List Name',         selector: { text: {} } },
+                    { name: 'done_show_total',           label: 'Show Total Done',        selector: { boolean: {} } },
+                    { name: 'done_show_last_seven_days', label: 'Show Last 7 Days Done',  selector: { boolean: {} } },
+                ],
+            },
+        ];
+    }
+
+    _defaults() {
+        return {
+            global_show_header: true,
+            global_show_header_sub_total: true,
+            global_update_interval_s: 60,
+            cards_limit_count: 100,
+            cards_show_labels: true,
+            cards_show_label_text: true,
+            cards_show_due: true,
+            cards_show_is_important: true,
+            cards_click_behavior: 'none',
+            cards_click_confirm: true,
+            done_show_last_seven_days: true,
+        };
+    }
+
+    _dataForSection(schema) {
+        const defaults = this._defaults();
+        const data = {};
+        for (const field of schema) {
+            if (this._config[field.name] !== undefined) {
+                data[field.name] = this._config[field.name];
+            } else if (defaults[field.name] !== undefined) {
+                data[field.name] = defaults[field.name];
+            }
+        }
+        return data;
+    }
+
+    _render() {
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = 'display: flex; flex-direction: column; gap: 8px; padding: 8px 0;';
+
+        for (const section of this._sections()) {
+            const panel = document.createElement('ha-expansion-panel');
+            panel.header = section.title;
+            panel.outlined = true;
+            if (section.expanded) panel.expanded = true;
+
+            const form = document.createElement('ha-form');
+            form.hass = this._hass;
+            form.schema = section.schema;
+            form.data = this._dataForSection(section.schema);
+            form.computeLabel = (field) => field.label || field.name;
+            form.style.cssText = 'padding: 0 16px 16px;';
+
+            form.addEventListener('value-changed', (ev) => {
+                this._config = { ...this._config, ...ev.detail.value };
+                this._syncForms();
+                this.dispatchEvent(new CustomEvent('config-changed', {
+                    detail: { config: this._config },
+                    bubbles: true,
+                    composed: true,
+                }));
+            });
+
+            panel.appendChild(form);
+            wrapper.appendChild(panel);
+        }
+
+        this.innerHTML = '';
+        this.appendChild(wrapper);
+    }
+
+    _syncForms() {
+        const sections = this._sections();
+        const forms = this.querySelectorAll('ha-form');
+        forms.forEach((form, i) => {
+            if (sections[i]) {
+                form.data = this._dataForSection(sections[i].schema);
+            }
+        });
+    }
+}
+
+customElements.define('trello-list-viewer-card-editor', TrelloListViewerCardEditor);
 
 class TrelloData {
     userId;

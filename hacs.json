@@ -1,5 +1,6 @@
 {
     "name": "Trello List Viewer Card",
     "render_readme": true,
-    "filename": "trelloListViewerCard.js"
+    "filename": "trelloListViewerCard.js",
+    "homeassistant": "2023.9.0"
 }
