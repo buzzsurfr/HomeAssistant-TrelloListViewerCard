@@ -95,7 +95,7 @@ class TrelloListViewerCard extends HTMLElement
                 checkRequiredProperties();
                 await getCurrentUser();
                 await getBoard();
-                await getImportantLabel();
+                if(config_global_important_label_name) await getImportantLabel();
                 await getLists();
                 cardDatas = await getCards(trelloData.listId);
                 orderCards();
@@ -156,7 +156,12 @@ class TrelloListViewerCard extends HTMLElement
                 const label = labels.find(obj => {
                                 return obj.name === config_global_important_label_name;
                             });
-                
+
+                if(!label) {
+                    console.warn("TrelloListViewerCard: Label '" + config_global_important_label_name + "' not found on board.");
+                    return;
+                }
+
                 trelloData.importantLabelId = label.id;
                 trelloData.importantLabelName = label.name;
                 trelloData.importantLabelColor = label.color;
