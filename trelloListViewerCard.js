@@ -63,6 +63,7 @@ class TrelloListViewerCard extends HTMLElement
             const config_global_update_interval_s = this.config.global_update_interval_s !== undefined ? this.config.global_update_interval_s * 1000 : 60 * 1000;
             const config_global_disable_auto_refresh = this.config.global_disable_auto_refresh !== undefined ? this.config.global_disable_auto_refresh : false;
             const config_global_reduce_requests = this.config.global_reduce_requests !== undefined ? this.config.global_reduce_requests : false;
+            const config_global_borderless = this.config.global_borderless !== undefined ? this.config.global_borderless : false;
 
             // Cards
             const config_cards_limit_count = this.config.cards_limit_count !== undefined ? this.config.cards_limit_count : 100;
@@ -77,12 +78,17 @@ class TrelloListViewerCard extends HTMLElement
             const config_cards_show_desc = this.config.cards_show_desc !== undefined ? this.config.cards_show_desc : false;
             const config_cards_show_is_important = this.config.cards_show_is_important !== undefined ? this.config.cards_show_is_important : true;
             const config_cards_sort_by_name = this.config.cards_sort_by_name !== undefined ? this.config.cards_sort_by_name : false;
+            const config_cards_show_dividers = this.config.cards_show_dividers !== undefined ? this.config.cards_show_dividers : false;
 
             // Done
             const config_done_show = this.config.done_show !== undefined ? this.config.done_show : false;
             const config_done_list_name = this.config.done_list_name !== undefined ? this.config.done_list_name : null;
             const config_done_show_total = this.config.done_show_total !== undefined ? this.config.done_show_total : false;
             const config_done_show_last_seven_days = this.config.done_show_last_seven_days !== undefined ? this.config.done_show_last_seven_days : true;
+
+            if(config_global_borderless) {
+                card.setAttribute('style', 'background: transparent !important; box-shadow: none !important; border: none !important;');
+            }
 
             let trelloData = new TrelloData();
             let cardDatas = [];
@@ -395,6 +401,11 @@ class TrelloListViewerCard extends HTMLElement
                 cardDataMap = {};
                 cardsDiv.innerHTML = "";
                 for (let i = 0; i < cardDatas.length && i < config_cards_limit_count; i++) {
+                    if(config_cards_show_dividers && i > 0) {
+                        const hr = document.createElement("hr");
+                        hr.style.cssText = "margin: 0; border: none; border-top: 1px solid var(--divider-color, rgba(0,0,0,0.12));";
+                        cardsDiv.innerHTML += hr.outerHTML;
+                    }
                     printCard(cardDatas[i]);
                 }
                 content.innerHTML += cardsDiv.outerHTML;
@@ -613,6 +624,7 @@ class TrelloListViewerCardEditor extends HTMLElement {
                     { name: 'global_disable_auto_refresh',  label: 'Disable Auto Refresh',      selector: { boolean: {} } },
                     { name: 'global_reduce_requests',       label: 'Reduce Requests',           selector: { boolean: {} } },
                     { name: 'global_debug',                 label: 'Debug Mode',                selector: { boolean: {} } },
+                    { name: 'global_borderless',            label: 'Borderless Card',           selector: { boolean: {} } },
                 ],
             },
             {
@@ -627,6 +639,7 @@ class TrelloListViewerCardEditor extends HTMLElement {
                     { name: 'cards_show_desc',          label: 'Show Description',  selector: { boolean: {} } },
                     { name: 'cards_show_is_important',  label: 'Show Importance',   selector: { boolean: {} } },
                     { name: 'cards_sort_by_name',       label: 'Sort by Name',      selector: { boolean: {} } },
+                    { name: 'cards_show_dividers',      label: 'Show Dividers',     selector: { boolean: {} } },
                     { name: 'cards_click_behavior',     label: 'Click Behavior',    selector: { select: { options: ['none', 'open', 'move', 'archive', 'toggle', 'delete'] } } },
                     { name: 'cards_click_confirm',      label: 'Confirm on Click',  selector: { boolean: {} } },
                     { name: 'cards_click_move_to_list', label: 'Move to List Name', selector: { text: {} } },
@@ -650,8 +663,10 @@ class TrelloListViewerCardEditor extends HTMLElement {
             global_show_header: true,
             global_show_header_sub_total: true,
             global_update_interval_s: 60,
+            global_borderless: false,
             cards_limit_count: 100,
             cards_show_checkbox: false,
+            cards_show_dividers: false,
             cards_show_labels: true,
             cards_show_label_text: true,
             cards_show_due: true,
