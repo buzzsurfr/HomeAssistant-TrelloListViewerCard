@@ -437,7 +437,8 @@ class TrelloListViewerCard extends HTMLElement
                         }
 
                         cardLabelInnerSpan.innerHTML = labelText;
-                        cardLabelInnerSpan.style.backgroundColor = cardData.labels[i].color;
+                        const labelColor = TRELLO_COLORS[cardData.labels[i].color] || cardData.labels[i].color;
+                        if(labelColor) cardLabelInnerSpan.style.backgroundColor = labelColor;
                         cardLabelDiv.innerHTML += cardLabelInnerSpan.outerHTML + "&nbsp&nbsp";
                     }
                     cardContainerDiv.innerHTML += cardLabelDiv.outerHTML;
@@ -774,3 +775,36 @@ class DoneData {
     totalCount;
     lastSevenDaysCount;
 }
+
+const TRELLO_COLORS = {
+    'green':         '#61BD4F',
+    'green_dark':    '#519839',
+    'green_light':   '#B7DDB0',
+    'yellow':        '#F2D600',
+    'yellow_dark':   '#D9B51C',
+    'yellow_light':  '#F5EC6C',
+    'orange':        '#FF9F1A',
+    'orange_dark':   '#CD8313',
+    'orange_light':  '#FAD29C',
+    'red':           '#EB5A46',
+    'red_dark':      '#B04632',
+    'red_light':     '#EFB3AB',
+    'purple':        '#C377E0',
+    'purple_dark':   '#89609E',
+    'purple_light':  '#DFC0EB',
+    'blue':          '#0079BF',
+    'blue_dark':     '#055A8C',
+    'blue_light':    '#8BBDD9',
+    'sky':           '#00C2E0',
+    'sky_dark':      '#0098B7',
+    'sky_light':     '#8FDFEB',
+    'lime':          '#51E898',
+    'lime_dark':     '#4BBF6B',
+    'lime_light':    '#B3F1D0',
+    'pink':          '#FF78CB',
+    'pink_dark':     '#AE4180',
+    'pink_light':    '#F9C2E4',
+    'black':         '#344563',
+    'black_dark':    '#091E42',
+    'black_light':   '#8C9BAB',
+};
