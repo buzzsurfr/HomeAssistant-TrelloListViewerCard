@@ -70,6 +70,7 @@ class TrelloListViewerCard extends HTMLElement
             const config_cards_click_confirm = this.config.cards_click_confirm !== undefined ? this.config.cards_click_confirm : true;
             const config_cards_click_move_to_list = this.config.cards_click_move_to_list !== undefined ? this.config.cards_click_move_to_list : null;
             
+            const config_cards_show_checkbox = this.config.cards_show_checkbox !== undefined ? this.config.cards_show_checkbox : false;
             const config_cards_show_labels = this.config.cards_show_labels !== undefined ? this.config.cards_show_labels : true;
             const config_cards_show_label_text = this.config.cards_show_label_text !== undefined ? this.config.cards_show_label_text : true;
             const config_cards_show_due = this.config.cards_show_due !== undefined ? this.config.cards_show_due : true;
@@ -105,6 +106,7 @@ class TrelloListViewerCard extends HTMLElement
                 if(cardDatas.length == previousCardDataCount && config_global_reduce_requests) {
                     return;
                 }
+                content.innerHTML = '';
                 printHeader();
                 printDoneCounts();
                 printCards();
@@ -432,17 +434,29 @@ class TrelloListViewerCard extends HTMLElement
 
                 // Name
                 const cardNameWrapperDiv = document.createElement("div");
-                //cardNameWrapperDiv.style.fontWeight = "bold";
-//                cardNameWrapperDiv.style.fontSize = "1.2em";
+                cardNameWrapperDiv.style.display = "flex";
+                cardNameWrapperDiv.style.alignItems = "center";
+                if(config_cards_show_checkbox) {
+                    const checkboxSpan = document.createElement("span");
+                    checkboxSpan.innerHTML = cardData.dueComplete ? "&#x2611;" : "&#x2610;";
+                    checkboxSpan.style.marginRight = "0.5em";
+                    checkboxSpan.style.fontSize = "1.1em";
+                    checkboxSpan.style.flexShrink = "0";
+                    cardNameWrapperDiv.innerHTML += checkboxSpan.outerHTML;
+                }
                 if(config_cards_show_is_important && cardData.isImportant) {
                     const cardNameImportantSpan = document.createElement("span");
                     cardNameImportantSpan.innerHTML = "✭&nbsp;";
                     cardNameImportantSpan.style.color = getColorFromTemplate("--primary-color");
                     cardNameImportantSpan.style.marginRight = "0.3em";
-                    cardNameWrapperDiv.innerHTML = cardNameImportantSpan.outerHTML;
+                    cardNameWrapperDiv.innerHTML += cardNameImportantSpan.outerHTML;
                 }
                 const cardNameTextSpan = document.createElement("span");
                 cardNameTextSpan.innerText = cardData.name;
+                if(cardData.dueComplete) {
+                    cardNameTextSpan.style.textDecoration = "line-through";
+                    cardNameTextSpan.style.opacity = "0.5";
+                }
                 cardNameWrapperDiv.innerHTML += cardNameTextSpan.outerHTML;
                 cardContainerDiv.innerHTML += cardNameWrapperDiv.outerHTML;
 
@@ -606,6 +620,7 @@ class TrelloListViewerCardEditor extends HTMLElement {
                 expanded: false,
                 schema: [
                     { name: 'cards_limit_count',        label: 'Card Limit',        selector: { number: { min: 1, max: 500, mode: 'box' } } },
+                    { name: 'cards_show_checkbox',      label: 'Show Checkbox',     selector: { boolean: {} } },
                     { name: 'cards_show_labels',        label: 'Show Labels',       selector: { boolean: {} } },
                     { name: 'cards_show_label_text',    label: 'Show Label Text',   selector: { boolean: {} } },
                     { name: 'cards_show_due',           label: 'Show Due Date',     selector: { boolean: {} } },
@@ -636,6 +651,7 @@ class TrelloListViewerCardEditor extends HTMLElement {
             global_show_header_sub_total: true,
             global_update_interval_s: 60,
             cards_limit_count: 100,
+            cards_show_checkbox: false,
             cards_show_labels: true,
             cards_show_label_text: true,
             cards_show_due: true,
