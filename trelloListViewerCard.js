@@ -424,18 +424,16 @@ class TrelloListViewerCard extends HTMLElement
                     cardContainerDiv.style.cursor = "pointer";
                 }
 
-                const isHorizontalLabel = config_cards_label_placement === 'top' || config_cards_label_placement === 'bottom';
+                const isSidewaysLabel = config_cards_label_placement === 'left' || config_cards_label_placement === 'right';
 
                 // Build label HTML
                 let labelHtml = '';
                 if(config_cards_show_labels && cardData.labels.length > 0) {
                     const cardLabelDiv = document.createElement("div");
                     cardLabelDiv.style.fontSize = "0.6em";
-                    if(!isHorizontalLabel) {
-                        cardLabelDiv.style.display = "flex";
-                        cardLabelDiv.style.flexDirection = "column";
-                        cardLabelDiv.style.gap = "3px";
+                    if(isSidewaysLabel) {
                         cardLabelDiv.style.alignSelf = "center";
+                        cardLabelDiv.style.flexShrink = "0";
                     }
                     for (let i = 0; i < cardData.labels.length; i++) {
                         const cardLabelInnerSpan = document.createElement("span");
@@ -446,7 +444,7 @@ class TrelloListViewerCard extends HTMLElement
                         cardLabelInnerSpan.innerHTML = labelText;
                         const labelColor = TRELLO_COLORS[cardData.labels[i].color] || cardData.labels[i].color;
                         if(labelColor) cardLabelInnerSpan.style.backgroundColor = labelColor;
-                        cardLabelDiv.innerHTML += cardLabelInnerSpan.outerHTML + (isHorizontalLabel ? "&nbsp;&nbsp;" : "");
+                        cardLabelDiv.innerHTML += cardLabelInnerSpan.outerHTML + "&nbsp;&nbsp;";
                     }
                     labelHtml = cardLabelDiv.outerHTML;
                 }
@@ -496,7 +494,7 @@ class TrelloListViewerCard extends HTMLElement
                 }
 
                 // Assemble based on label placement
-                if(!isHorizontalLabel) {
+                if(isSidewaysLabel) {
                     cardContainerDiv.style.display = "flex";
                     cardContainerDiv.style.alignItems = "center";
                     cardContainerDiv.style.gap = "0.6em";
