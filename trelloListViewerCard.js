@@ -66,7 +66,7 @@ class TrelloListViewerCard extends HTMLElement
 
             // Cards
             const config_cards_limit_count = this.config.cards_limit_count !== undefined ? this.config.cards_limit_count : 100;
-            const config_cards_click_behavior = this.config.cards_click_behavior !== undefined ? this.config.cards_click_behavior : "none"; // TODO open, move, close, delete, none
+            const config_cards_click_behavior = this.config.cards_click_behavior !== undefined ? this.config.cards_click_behavior : "none";
             const config_cards_click_confirm = this.config.cards_click_confirm !== undefined ? this.config.cards_click_confirm : true;
             const config_cards_click_move_to_list = this.config.cards_click_move_to_list !== undefined ? this.config.cards_click_move_to_list : null;
             
@@ -85,6 +85,7 @@ class TrelloListViewerCard extends HTMLElement
 
             let trelloData = new TrelloData();
             let cardDatas = [];
+            let cardDataMap = {};
             let doneData = new DoneData();
             let previousCardDataCount = -1;
 
@@ -267,6 +268,55 @@ class TrelloListViewerCard extends HTMLElement
                 }
             }
 
+            async function putJson(url, params) {
+                log("Put to url '" + url + "'");
+                let localUrl = url + "?" + new URLSearchParams(params).toString();
+                localUrl += "&key=" + config_global_credentials_api_key + "&token=" + config_global_credentials_api_token;
+                await fetch(localUrl, { method: 'PUT', headers: { Accept: 'application/json' } });
+            }
+
+            async function deleteJson(url) {
+                log("Delete to url '" + url + "'");
+                const localUrl = url + "?key=" + config_global_credentials_api_key + "&token=" + config_global_credentials_api_token;
+                await fetch(localUrl, { method: 'DELETE' });
+            }
+
+            async function cardClick(cardData) {
+                if(!cardData || config_cards_click_behavior === "none") return;
+
+                if(config_cards_click_behavior === "open") {
+                    window.open(cardData.shortUrl, "_blank");
+                    return;
+                }
+
+                if(config_cards_click_confirm) {
+                    const actionLabel = {
+                        move:    "move",
+                        archive: "archive",
+                        toggle:  cardData.dueComplete ? "mark incomplete" : "mark complete",
+                        delete:  "permanently delete",
+                    }[config_cards_click_behavior];
+                    if(!window.confirm('Are you sure you want to ' + actionLabel + ' "' + cardData.name + '"?')) return;
+                }
+
+                if(config_cards_click_behavior === "move") {
+                    const [listId] = await getList(config_cards_click_move_to_list);
+                    const url = const_url_update_card.replace("{card_id}", cardData.id);
+                    await putJson(url, { idList: listId });
+                } else if(config_cards_click_behavior === "archive") {
+                    const url = const_url_update_card.replace("{card_id}", cardData.id);
+                    await putJson(url, { closed: true });
+                } else if(config_cards_click_behavior === "toggle") {
+                    const url = const_url_update_card.replace("{card_id}", cardData.id);
+                    await putJson(url, { dueComplete: !cardData.dueComplete });
+                } else if(config_cards_click_behavior === "delete") {
+                    const url = const_url_delete_card.replace("{card_id}", cardData.id);
+                    await deleteJson(url);
+                }
+
+                await main();
+            }
+
             async function getJson(url) {
                 log("Get json from url '" + url + "'");
                 let localUrl = url;
@@ -340,6 +390,7 @@ class TrelloListViewerCard extends HTMLElement
 
             function printCards() {
                 log(cardDatas);
+                cardDataMap = {};
                 cardsDiv.innerHTML = "";
                 for (let i = 0; i < cardDatas.length && i < config_cards_limit_count; i++) {
                     printCard(cardDatas[i]);
@@ -354,7 +405,11 @@ class TrelloListViewerCard extends HTMLElement
                 // cardContainerDiv.style.borderRadius = "12px";
                 // cardContainerDiv.style.borderTop = "1px solid " + getColorFromTemplate("--fc-theme-standard-border-color"); // 1px solid var(--fc-theme-standard-border-color,#ddd) !important
                 cardContainerDiv.style.padding = "0.5em";
-                //cardContainerDiv.setAttribute("onClick", "cardClick('" + cardData.id + "')");
+                cardContainerDiv.dataset.cardId = cardData.id;
+                cardDataMap[cardData.id] = cardData;
+                if(config_cards_click_behavior !== "none") {
+                    cardContainerDiv.style.cursor = "pointer";
+                }
 
                 // Label
                 if(config_cards_show_labels) {
@@ -438,6 +493,13 @@ class TrelloListViewerCard extends HTMLElement
             async function init() {
                 log("Loading cards...");
                 printLoading();
+                if(config_cards_click_behavior !== "none") {
+                    content.addEventListener("click", async (ev) => {
+                        const cardEl = ev.target.closest("[data-card-id]");
+                        if(!cardEl) return;
+                        await cardClick(cardDataMap[cardEl.dataset.cardId]);
+                    });
+                }
                 main();
                 if(!config_global_disable_auto_refresh) {
                     setInterval(async () => {
@@ -550,7 +612,7 @@ class TrelloListViewerCardEditor extends HTMLElement {
                     { name: 'cards_show_desc',          label: 'Show Description',  selector: { boolean: {} } },
                     { name: 'cards_show_is_important',  label: 'Show Importance',   selector: { boolean: {} } },
                     { name: 'cards_sort_by_name',       label: 'Sort by Name',      selector: { boolean: {} } },
-                    { name: 'cards_click_behavior',     label: 'Click Behavior',    selector: { select: { options: ['none', 'open', 'move', 'close', 'delete'] } } },
+                    { name: 'cards_click_behavior',     label: 'Click Behavior',    selector: { select: { options: ['none', 'open', 'move', 'archive', 'toggle', 'delete'] } } },
                     { name: 'cards_click_confirm',      label: 'Confirm on Click',  selector: { boolean: {} } },
                     { name: 'cards_click_move_to_list', label: 'Move to List Name', selector: { text: {} } },
                 ],
