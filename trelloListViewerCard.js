@@ -79,6 +79,8 @@ class TrelloListViewerCard extends HTMLElement
             const config_cards_show_is_important = this.config.cards_show_is_important !== undefined ? this.config.cards_show_is_important : true;
             const config_cards_sort_by_name = this.config.cards_sort_by_name !== undefined ? this.config.cards_sort_by_name : false;
             const config_cards_show_dividers = this.config.cards_show_dividers !== undefined ? this.config.cards_show_dividers : false;
+            const config_cards_font_size = this.config.cards_font_size !== undefined ? this.config.cards_font_size : 1.0;
+            const config_cards_label_placement = this.config.cards_label_placement !== undefined ? this.config.cards_label_placement : 'top';
 
             // Done
             const config_done_show = this.config.done_show !== undefined ? this.config.done_show : false;
@@ -89,6 +91,7 @@ class TrelloListViewerCard extends HTMLElement
             if(config_global_borderless) {
                 card.setAttribute('style', 'background: transparent !important; box-shadow: none !important; border: none !important;');
             }
+            cardsDiv.style.fontSize = config_cards_font_size + 'em';
 
             let trelloData = new TrelloData();
             let cardDatas = [];
@@ -414,9 +417,6 @@ class TrelloListViewerCard extends HTMLElement
             function printCard(cardData) {
                 const cardContainerDiv = document.createElement("div");
                 cardContainerDiv.style.marginBottom = "0.4em";
-                // cardContainerDiv.style.border = "solid 1px";
-                // cardContainerDiv.style.borderRadius = "12px";
-                // cardContainerDiv.style.borderTop = "1px solid " + getColorFromTemplate("--fc-theme-standard-border-color"); // 1px solid var(--fc-theme-standard-border-color,#ddd) !important
                 cardContainerDiv.style.padding = "0.5em";
                 cardContainerDiv.dataset.cardId = cardData.id;
                 cardDataMap[cardData.id] = cardData;
@@ -424,27 +424,38 @@ class TrelloListViewerCard extends HTMLElement
                     cardContainerDiv.style.cursor = "pointer";
                 }
 
-                // Label
-                if(config_cards_show_labels) {
+                const isHorizontalLabel = config_cards_label_placement === 'top' || config_cards_label_placement === 'bottom';
+
+                // Build label HTML
+                let labelHtml = '';
+                if(config_cards_show_labels && cardData.labels.length > 0) {
                     const cardLabelDiv = document.createElement("div");
                     cardLabelDiv.style.fontSize = "0.6em";
+                    if(!isHorizontalLabel) {
+                        cardLabelDiv.style.display = "flex";
+                        cardLabelDiv.style.flexDirection = "column";
+                        cardLabelDiv.style.gap = "3px";
+                        cardLabelDiv.style.alignSelf = "center";
+                    }
                     for (let i = 0; i < cardData.labels.length; i++) {
                         const cardLabelInnerSpan = document.createElement("span");
-
-                        let labelText = "&nbsp&nbsp&nbsp&nbsp";
+                        let labelText = "&nbsp;&nbsp;&nbsp;&nbsp;";
                         if(config_cards_show_label_text) {
-                            labelText = "&nbsp&nbsp" + cardData.labels[i].name + "&nbsp&nbsp";
+                            labelText = "&nbsp;&nbsp;" + cardData.labels[i].name + "&nbsp;&nbsp;";
                         }
-
                         cardLabelInnerSpan.innerHTML = labelText;
                         const labelColor = TRELLO_COLORS[cardData.labels[i].color] || cardData.labels[i].color;
                         if(labelColor) cardLabelInnerSpan.style.backgroundColor = labelColor;
-                        cardLabelDiv.innerHTML += cardLabelInnerSpan.outerHTML + "&nbsp&nbsp";
+                        cardLabelDiv.innerHTML += cardLabelInnerSpan.outerHTML + (isHorizontalLabel ? "&nbsp;&nbsp;" : "");
                     }
-                    cardContainerDiv.innerHTML += cardLabelDiv.outerHTML;
+                    labelHtml = cardLabelDiv.outerHTML;
                 }
 
-                // Name
+                // Build content HTML
+                const contentDiv = document.createElement("div");
+                contentDiv.style.flex = "1";
+                contentDiv.style.minWidth = "0";
+
                 const cardNameWrapperDiv = document.createElement("div");
                 cardNameWrapperDiv.style.display = "flex";
                 cardNameWrapperDiv.style.alignItems = "center";
@@ -470,19 +481,30 @@ class TrelloListViewerCard extends HTMLElement
                     cardNameTextSpan.style.opacity = "0.5";
                 }
                 cardNameWrapperDiv.innerHTML += cardNameTextSpan.outerHTML;
-                cardContainerDiv.innerHTML += cardNameWrapperDiv.outerHTML;
+                contentDiv.innerHTML += cardNameWrapperDiv.outerHTML;
 
-                // Due "2023-11-30T20:29:00.000Z"
                 if(config_cards_show_due && cardData.due != null && !cardData.dueComplete) {
                     const cardDueDiv = document.createElement("div");
                     cardDueDiv.innerText = cardData.due;
-                    cardContainerDiv.innerHTML += cardDueDiv.outerHTML;
+                    contentDiv.innerHTML += cardDueDiv.outerHTML;
                 }
 
                 if(config_cards_show_desc) {
                     const cardDescDiv = document.createElement("div");
                     cardDescDiv.innerText = cardData.desc;
-                    cardContainerDiv.innerHTML += cardDescDiv.outerHTML;
+                    contentDiv.innerHTML += cardDescDiv.outerHTML;
+                }
+
+                // Assemble based on label placement
+                if(!isHorizontalLabel) {
+                    cardContainerDiv.style.display = "flex";
+                    cardContainerDiv.style.alignItems = "center";
+                    cardContainerDiv.style.gap = "0.6em";
+                }
+                if(config_cards_label_placement === 'bottom' || config_cards_label_placement === 'right') {
+                    cardContainerDiv.innerHTML += contentDiv.outerHTML + labelHtml;
+                } else {
+                    cardContainerDiv.innerHTML += labelHtml + contentDiv.outerHTML;
                 }
 
                 cardsDiv.innerHTML += cardContainerDiv.outerHTML;
@@ -633,6 +655,8 @@ class TrelloListViewerCardEditor extends HTMLElement {
                 expanded: false,
                 schema: [
                     { name: 'cards_limit_count',        label: 'Card Limit',        selector: { number: { min: 1, max: 500, mode: 'box' } } },
+                    { name: 'cards_font_size',          label: 'Font Size (em)',     selector: { number: { min: 0.5, max: 2.0, step: 0.1, mode: 'box' } } },
+                    { name: 'cards_label_placement',    label: 'Label Placement',   selector: { select: { options: ['top', 'bottom', 'left', 'right'] } } },
                     { name: 'cards_show_checkbox',      label: 'Show Checkbox',     selector: { boolean: {} } },
                     { name: 'cards_show_labels',        label: 'Show Labels',       selector: { boolean: {} } },
                     { name: 'cards_show_label_text',    label: 'Show Label Text',   selector: { boolean: {} } },
@@ -666,6 +690,8 @@ class TrelloListViewerCardEditor extends HTMLElement {
             global_update_interval_s: 60,
             global_borderless: false,
             cards_limit_count: 100,
+            cards_font_size: 1.0,
+            cards_label_placement: 'top',
             cards_show_checkbox: false,
             cards_show_dividers: false,
             cards_show_labels: true,
